@@ -184,6 +184,8 @@ document.addEventListener(
             approve();
         } else if (e.keyCode === 68) {
             reject();
+        } else if (e.keyCode === 83) {
+            save();
         }
 
         nowIndex.value = clamp(nowIndex.value, 0, floorCount.value - 1);

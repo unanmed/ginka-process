@@ -144,7 +144,7 @@ export class Tower extends EventEmitter<TowerEvent> {
 
         await Promise.all(
             tilesList.map(v => {
-                const url = `./tiles/${v}`;
+                const url = `${import.meta.env.BASE_URL}tiles/${v}`;
                 const image = new Image();
                 image.src = url;
                 this.images[v.slice(0, -4)] = image;
