@@ -349,7 +349,7 @@ export class Tower extends EventEmitter<TowerEvent> {
             case 'npcs':
                 return [this.assets.npcs, 0, icon * 32, 32, 32];
             case 'npc48':
-                return [this.assets.npc48, 0, icon * 32, 32, 32];
+                return [this.assets.npc48, 0, icon * 32, 32, 48];
             case 'items':
                 return [this.assets.items, 0, icon * 32, 32, 32];
             case 'autotile':
