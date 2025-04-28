@@ -249,13 +249,11 @@ export class Tower extends EventEmitter<TowerEvent> {
 
         // 额外素材
         const tilesets: Record<string, HTMLImageElement> = {};
+        this.data?.main.tilesets.forEach;
         const tilesetsHandle = await project.getDirectoryHandle('tilesets');
-        const tilesetsList = await Array.fromAsync(tilesetsHandle.values());
         await Promise.all(
-            tilesetsList.map(async v => {
-                if (v instanceof FileSystemDirectoryHandle) {
-                    return Promise.resolve();
-                }
+            this.data!.main.tilesets.map(async tile => {
+                const v = await tilesetsHandle.getFileHandle(tile);
                 if (!v.name.endsWith('.png')) return;
                 const file = await v.getFile();
                 const buffer = await file.arrayBuffer();
