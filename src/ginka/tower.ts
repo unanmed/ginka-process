@@ -258,7 +258,7 @@ export class Tower extends EventEmitter<TowerEvent> {
                 const file = await v.getFile();
                 const buffer = await file.arrayBuffer();
                 const image = await this.loadImage(buffer);
-                if (image) tilesets[v.name.slice(0, -4)] = image;
+                if (image) tilesets[tile] = image;
             })
         );
 
@@ -322,11 +322,12 @@ export class Tower extends EventEmitter<TowerEvent> {
     private getMapImage(
         num: number
     ): [HTMLImageElement, number, number, number, number] | void {
-        if (!this.assets || !this.maps || !this.icons) return;
+        if (!this.assets || !this.maps || !this.icons || !this.data) return;
         if (num >= 10000) {
             // 额外素材
             const index = Math.floor(num / 10000) - 1;
-            const tileset = this.assets.tilesets[index];
+            const tileset =
+                this.assets.tilesets[this.data.main.tilesets[index]];
             const width = Math.floor(tileset.width / 32);
             const n = num % 10000;
             const x = n % width;
