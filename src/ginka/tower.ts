@@ -53,12 +53,29 @@ const tilesList = [
     '8.png',
     '9.png',
     '10.png',
-    '11_1.png',
-    '11_2.png',
-    '11_3.png',
-    '11_4.png',
+    '11.png',
     '12.png',
     '13.png',
+    '14.png',
+    '15.png',
+    '16.png',
+    '17.png',
+    '18.png',
+    '19.png',
+    '20.png',
+    '21.png',
+    '22.png',
+    '23.png',
+    '24.png',
+    '25.png',
+    '26.png',
+    '27.png',
+    '28.png',
+    '29.png',
+    '30_1.png',
+    '30_2.png',
+    '30_3.png',
+    '30_4.png',
     '999.png'
 ];
 
@@ -73,15 +90,18 @@ const materials = [
 ];
 
 const typeMap: Record<keyof GinkaMapping, string> = {
-    redGem: '3',
-    blueGem: '4',
-    greenGem: '13',
+    redGem: '10',
+    blueGem: '13',
+    greenGem: '16',
     yellowGem: '999',
-    potion: '5',
-    door: '6',
-    item: '12',
+    potion: '19',
+    door: '3',
+    item: '22',
     wall: '1',
-    key: '2'
+    key: '7',
+    floor: '29',
+    arrow: '30',
+    decoration: '2'
 };
 
 export class Tower extends EventEmitter<TowerEvent> {
@@ -199,9 +219,15 @@ export class Tower extends EventEmitter<TowerEvent> {
         this.config = configJSON;
 
         for (const [key, value] of Object.entries(configJSON.mapping)) {
-            value.forEach((v: number) => {
-                this.mapping.set(v, key as keyof GinkaMapping);
-            });
+            if (value instanceof Array) {
+                value.forEach((v: number) => {
+                    this.mapping.set(v, key as keyof GinkaMapping);
+                });
+            } else {
+                for (const num of Object.keys(value)) {
+                    this.mapping.set(Number(num), key as keyof GinkaMapping);
+                }
+            }
         }
 
         // 楼层
@@ -296,30 +322,62 @@ export class Tower extends EventEmitter<TowerEvent> {
         return this.floors.get(this.data.main.floorIds[this.nowIndex]) ?? null;
     }
 
+    resetMark(num: number) {
+        if (!this.config) return;
+        const dict = this.config.mapping;
+        const idxArrow = dict.arrow.indexOf(num);
+        dict.arrow.splice(idxArrow, 1);
+        const idxFloor = dict.floor.indexOf(num);
+        dict.floor.splice(idxFloor, 1);
+        const idxWall = dict.wall.indexOf(num);
+        dict.wall.splice(idxWall, 1);
+        const idxDec = dict.decoration.indexOf(num);
+        dict.decoration.splice(idxDec, 1);
+
+        delete dict.redGem[num];
+        delete dict.blueGem[num];
+        delete dict.greenGem[num];
+        delete dict.yellowGem[num];
+        delete dict.item[num];
+        delete dict.potion[num];
+        delete dict.key[num];
+        delete dict.door[num];
+    }
+
     markAs(num: number, type: keyof GinkaMapping) {
         if (!this.config) return;
-        for (const mapped of Object.values(this.config.mapping)) {
-            const arr = mapped as number[];
-            const idx = arr.indexOf(num);
-            if (idx !== -1) arr.splice(idx, 1);
+        const dict = this.config.mapping;
+        this.resetMark(num);
+
+        if (['arrow', 'floor', 'wall', 'decoration'].includes(type)) {
+            const arr = dict[type] as number[];
+            arr.push(num);
+        } else {
+            const obj = dict[type] as Record<number, number>;
+            obj[num] = 0;
         }
-        this.config.mapping[type].push(num);
         this.mapping.set(num, type);
         this.render();
     }
 
     unmark(num: number) {
-        if (!this.config) return;
-        for (const mapped of Object.values(this.config.mapping)) {
-            const arr = mapped as number[];
-            const idx = arr.indexOf(num);
-            if (idx !== -1) arr.splice(idx, 1);
-        }
+        this.resetMark(num);
         this.mapping.delete(num);
         this.render();
     }
 
-    private getMapImage(
+    updateValue(num: number, value: number) {
+        if (!this.config) return;
+        const mapped = this.mapping.get(num);
+        if (mapped) {
+            const data = this.config.mapping[mapped];
+            if (data instanceof Array) return;
+            data[num] = value;
+        }
+        this.render();
+    }
+
+    getMapImage(
         num: number
     ): [HTMLImageElement, number, number, number, number] | void {
         if (!this.assets || !this.maps || !this.icons || !this.data) return;
@@ -357,17 +415,57 @@ export class Tower extends EventEmitter<TowerEvent> {
         }
     }
 
-    private getMappedImage(
-        num: number
+    getMappedImage(
+        num: number,
+        x: number,
+        y: number
     ): [HTMLImageElement, number, number, number, number] | void {
         const mapped = this.mapping.get(num);
+        const value = this.getValue(num);
         if (mapped) {
             const id = typeMap[mapped];
-            return [this.images[id], 0, 0, 32, 32];
+            if (id === 'arrow') {
+                let id = '30_1';
+                if (y == 0) id = '30_1';
+                else if (x === 0) id = '30_2';
+                else if (y === 12) id = '30_3';
+                else if (x === 12) id = '30_4';
+                return [this.images[id], 0, 0, 32, 32];
+            } else if (mapped === 'door') {
+                const id = 3 + value;
+                return [this.images[id], 0, 0, 32, 32];
+            } else if (mapped === 'key') {
+                const id = 7 + value;
+                return [this.images[id], 0, 0, 32, 32];
+            } else if (mapped === 'item') {
+                const id = 23 + value;
+                return [this.images[id], 0, 0, 32, 32];
+            } else return [this.images[id], 0, 0, 32, 32];
         } else {
             // 未处理图块
             return this.getMapImage(num);
         }
+    }
+
+    getValue(num: number) {
+        if (!this.config) return -1;
+        const dict = this.config.mapping;
+
+        if (dict.floor.includes(num)) return -1;
+        if (dict.arrow.includes(num)) return -1;
+        if (dict.wall.includes(num)) return -1;
+        if (dict.decoration.includes(num)) return -1;
+
+        if (dict.redGem[num] !== void 0) return dict.redGem[num];
+        if (dict.blueGem[num] !== void 0) return dict.blueGem[num];
+        if (dict.greenGem[num] !== void 0) return dict.greenGem[num];
+        if (dict.yellowGem[num] !== void 0) return dict.yellowGem[num];
+        if (dict.item[num] !== void 0) return dict.item[num];
+        if (dict.potion[num] !== void 0) return dict.potion[num];
+        if (dict.key[num] !== void 0) return dict.key[num];
+        if (dict.door[num] !== void 0) return dict.door[num];
+
+        return -1;
     }
 
     render() {
@@ -386,12 +484,24 @@ export class Tower extends EventEmitter<TowerEvent> {
         for (let ny = 0; ny < map.length; ny++) {
             for (let nx = 0; nx < map[0].length; nx++) {
                 const tile = map[ny][nx];
-                const img = this.getMappedImage(tile);
+                const value = this.getValue(tile);
+                const img = this.getMappedImage(tile, nx, ny);
                 if (!img) continue;
                 const [im, sx, sy, sw, sh] = img;
                 const dx = nx * 32 + 16 - sw / 2;
                 const dy = ny * 32 + 32 - sh;
                 ctx.drawImage(im, sx, sy, sw, sh, dx, dy, sw, sh);
+                if (value !== -1) {
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#000';
+                    ctx.font = '14px Arial';
+                    ctx.lineWidth = 2;
+                    const str = value.toString();
+                    ctx.strokeText(str, nx * 32 + 2, ny * 32 + 32);
+                    ctx.fillText(str, nx * 32 + 2, ny * 32 + 32);
+                }
             }
         }
     }

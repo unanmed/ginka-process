@@ -15,16 +15,23 @@
             <Divider class="divider" dashed />
             <div class="types">
                 <div class="types-hint">
-                    选中后，点击地图上的图块替换为指定图块，擦除用于恢复
+                    选中后，点击地图上的图块替换为指定图块，擦除用于恢复，装饰一般直接使用编辑器修改，
+                    未被处理的图块会被视为空地，怪物除外。编辑完毕注意点击保存。
                 </div>
-                <div class="type-one" v-for="(text, key, idx) of typeMap">
+                <div class="type-one" v-for="(text, key) of typeMap">
                     <Button
                         class="button"
                         :selected="selectedType === key"
                         @click="selectedType = key"
-                        >{{ text }}</Button
+                        >{{ text[0] }}</Button
                     >
-                    <span>快捷键：{{ idx }}</span>
+                    <span class="hotkey">快捷键：{{ text[1] }}</span>
+                    <Button
+                        v-if="text[3]"
+                        class="button"
+                        @click="openValue(key)"
+                        >设置价值</Button
+                    >
                 </div>
             </div>
             <Divider class="divider" dashed />
@@ -50,13 +57,18 @@
                     >
                 </div>
             </div>
-            <Divider class="divider" dashed />
-            <div>未被处理的图块会被视为空地，怪物除外</div>
         </div>
         <Divider class="divider vertical" dashed type="vertical" />
-        <div class="right-panel" @wheel="wheel">
+        <div class="mid-panel" @wheel="wheel">
             <div class="map" ref="container">
                 <canvas ref="render"></canvas>
+            </div>
+            <div class="tags">
+                <Checkbox
+                    v-for="(tag, idx) of tags"
+                    v-model:checked="tagCond[idx]"
+                    >{{ tag }}</Checkbox
+                >
             </div>
             <div class="approve">
                 <Button type="primary" size="large" @click="approve"
@@ -70,31 +82,86 @@
     </div>
 </template>
 
-<script lang="ts" setup>
-import { Divider, Button, message, Slider } from 'ant-design-vue';
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+<script lang="tsx" setup>
+import {
+    Divider,
+    Button,
+    message,
+    Slider,
+    Checkbox,
+    Modal
+} from 'ant-design-vue';
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { SingleFolderHandler } from './common/folder';
 import type { GinkaMapping } from './types';
 import { Tower } from './ginka/tower';
 import { clamp } from 'lodash-es';
+import Value from './components/Value.vue';
 
 const support = 'showDirectoryPicker' in window;
 
 type TypeKeys = keyof GinkaMapping | 'erase';
 
-const typeMap: Record<TypeKeys, string> = {
-    erase: '擦除',
-    redGem: '红宝石',
-    blueGem: '蓝宝石',
-    greenGem: '绿宝石',
-    yellowGem: '黄宝石',
-    item: '道具',
-    potion: '血瓶',
-    key: '钥匙',
-    door: '门',
-    wall: '墙'
+// 标签定义：
+// 0. 蓝海, 1. 红海, 2: 室内, 3. 野外, 4. 左右对称, 5. 上下对称, 6. 伪对称, 7. 咸鱼层,
+// 8. 剧情层, 9. 水层, 10. 爽塔, 11. Boss层, 12. 纯Boss层, 13. 多房间, 14. 多走廊, 15. 道具塔
+
+// 标量值定义：
+// 0. 整体密度，非空白图块/地图面积，空白图块还包括装饰图块
+// 1. 怪物密度，怪物数量/地图面积
+// 2. 资源密度，资源数量/地图面积
+// 3. 门密度，门数量/地图面积
+// 4. 入口数量
+
+// 图块定义：
+// 0. 空地, 1. 墙壁, 2. 装饰（用于野外装饰，视为空地）,
+// 3. 黄门, 4. 蓝门, 5. 红门, 6. 机关门, 其余种类的门如绿门都视为红门
+// 7-9. 黄蓝红门钥匙，机关门不使用钥匙开启
+// 10-12. 三种等级的红宝石
+// 13-15. 三种等级的蓝宝石
+// 16-18. 三种等级的绿宝石
+// 19-22. 四种等级的血瓶
+// 23-25. 三种等级的道具
+// 26-28. 三种等级的怪物
+// 29. 楼梯入口
+// 30. 箭头入口
+
+/**
+ * [名称，快捷键，KeyCode，是否允许设置价值]
+ */
+const typeMap: Record<TypeKeys, [string, string, number, boolean]> = {
+    erase: ['擦除', '0', 48, false],
+    redGem: ['红宝石', '1', 49, true],
+    blueGem: ['蓝宝石', '2', 50, true],
+    greenGem: ['绿宝石', '3', 51, true],
+    yellowGem: ['黄宝石', '4', 52, true],
+    item: ['道具', '5', 53, true],
+    potion: ['血瓶', '6', 54, true],
+    key: ['钥匙', '7', 55, true],
+    door: ['门', '8', 56, true],
+    wall: ['墙', '9', 57, false],
+    floor: ['楼梯', 'Q', 81, false],
+    arrow: ['箭头', 'W', 87, false],
+    decoration: ['装饰', 'E', 69, false]
 };
-const typeKeys = Object.keys(typeMap) as TypeKeys[];
+const tags: string[] = [
+    '蓝海',
+    '红海',
+    '室内',
+    '野外',
+    '左右对称',
+    '上下对称',
+    '伪对称',
+    '咸鱼层',
+    '剧情层',
+    '水层',
+    '爽塔',
+    'Boss层',
+    '纯Boss层',
+    '多房间',
+    '多走廊',
+    '道具塔'
+];
 
 const folder = new SingleFolderHandler();
 const tower = new Tower();
@@ -105,6 +172,7 @@ const nowIndex = ref(0);
 const floorCount = ref(2);
 const render = ref<HTMLCanvasElement>();
 const container = ref<HTMLDivElement>();
+const tagCond = reactive<boolean[]>(Array(64).fill(false));
 
 watch(nowIndex, value => {
     tower.updateFloor(value);
@@ -165,14 +233,24 @@ function wheel(ev: WheelEvent) {
     nowIndex.value = clamp(nowIndex.value, 0, floorCount.value - 1);
 }
 
+function openValue(type: TypeKeys) {
+    if (type === 'erase') return;
+    Modal.info({
+        width: '30%',
+        title: '设置价值',
+        content: () => <Value tower={tower} type={type}></Value>
+    });
+}
+
 const abort = new AbortController();
 
 document.addEventListener(
     'keydown',
     e => {
-        const num = e.keyCode - 48;
-        if (num >= 0 && num < typeKeys.length) {
-            selectedType.value = typeKeys[num];
+        for (const [key, value] of Object.entries(typeMap)) {
+            if (value[2] === e.keyCode) {
+                selectedType.value = key as TypeKeys;
+            }
         }
     },
     { signal: abort.signal }
@@ -274,6 +352,10 @@ onUnmounted(() => {
                 background-color: #1677ff;
                 color: #fff;
             }
+
+            .hotkey {
+                margin-right: 16px;
+            }
         }
     }
 
@@ -296,12 +378,12 @@ onUnmounted(() => {
     }
 }
 
-.right-panel {
+.mid-panel {
     flex-basis: 70%;
     height: 100%;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-around;
     flex-direction: column;
 
     .map {
@@ -312,9 +394,22 @@ onUnmounted(() => {
         align-items: center;
     }
 
+    .tags {
+        display: flex;
+        width: 90%;
+        flex-direction: row;
+        flex-wrap: wrap;
+
+        label {
+            font-size: 16px;
+            flex-basis: 12.5%;
+            min-width: 100px;
+        }
+    }
+
     .approve {
         display: flex;
-        width: 80%;
+        width: 100%;
         justify-content: space-around;
         align-items: center;
     }
