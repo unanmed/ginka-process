@@ -28,7 +28,11 @@ export interface GinkaMapping {
     decoration: number[];
 }
 
+export interface GinkaData {
+    tag: number[];
+}
+
 export interface GinkaConfig extends BaseConfig {
-    data: Record<string, string[]>;
+    data: Record<string, GinkaData>;
     mapping: GinkaMapping;
 }

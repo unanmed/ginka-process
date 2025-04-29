@@ -67,6 +67,7 @@
                 <Checkbox
                     v-for="(tag, idx) of tags"
                     v-model:checked="tagCond[idx]"
+                    @change="updateTag"
                     >{{ tag }}</Checkbox
                 >
             </div>
@@ -241,6 +242,8 @@ function openValue(type: TypeKeys) {
         content: () => <Value tower={tower} type={type}></Value>
     });
 }
+
+function updateTag() {}
 
 const abort = new AbortController();
 

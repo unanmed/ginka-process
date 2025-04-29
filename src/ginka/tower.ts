@@ -377,6 +377,12 @@ export class Tower extends EventEmitter<TowerEvent> {
         this.render();
     }
 
+    updateTag(tags: boolean[]) {
+        if (!this.config || !this.data) return;
+        const id = this.data.main.floorIds[this.nowIndex];
+        this.config.data[id].tag = tags.map(v => (v ? 1 : 0));
+    }
+
     getMapImage(
         num: number
     ): [HTMLImageElement, number, number, number, number] | void {
