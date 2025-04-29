@@ -1,19 +1,19 @@
 <template>
     <div class="value">
         <div>{{ hint[type] }}</div>
-        <div class="value-one" v-for="(value, key) of list">
+        <div class="value-one" v-for="(_, key) of list">
             <Icon class="icon" :tower="tower" :icon="Number(key)"></Icon>
             <InputNumber
                 class="input"
                 @change="onValueChange(Number(key), $event)"
-                :value="value"
+                v-model:value="list[key]"
             ></InputNumber>
         </div>
     </div>
 </template>
 
 <script lang="ts" setup>
-import { onMounted, onUpdated, shallowRef, watch } from 'vue';
+import { onMounted, onUpdated, ref, watch } from 'vue';
 import { Tower } from '../ginka/tower';
 import { GinkaMapping } from '../types';
 import Icon from './Icon.vue';
@@ -24,7 +24,7 @@ const props = defineProps<{
     type: keyof GinkaMapping;
 }>();
 
-const list = shallowRef<Record<number, number>>({});
+const list = ref<Record<number, number>>({});
 
 const hint: Partial<Record<keyof GinkaMapping, string>> = {
     redGem: '红宝石价值，表示这个红宝石增加多少属性',

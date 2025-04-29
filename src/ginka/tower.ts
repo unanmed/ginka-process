@@ -1,5 +1,6 @@
 import EventEmitter from 'eventemitter3';
 import type { GinkaConfig, GinkaMapping } from '../types';
+import { format } from '../common/utils';
 
 interface TowerData {
     main: {
@@ -25,6 +26,7 @@ interface Icons {
 }
 
 interface TowerEvent {
+    updateFloor: [];
     updateFloorIds: [ids: string[]];
     clickBlock: [x: number, y: number];
 }
@@ -306,6 +308,7 @@ export class Tower extends EventEmitter<TowerEvent> {
 
     updateFloor(index: number) {
         this.nowIndex = index;
+        this.emit('updateFloor');
         this.render();
     }
 
@@ -380,7 +383,23 @@ export class Tower extends EventEmitter<TowerEvent> {
     updateTag(tags: boolean[]) {
         if (!this.config || !this.data) return;
         const id = this.data.main.floorIds[this.nowIndex];
-        this.config.data[id].tag = tags.map(v => (v ? 1 : 0));
+        const tag = Array(64).fill(0);
+        this.config.data[id] ??= { tag };
+        tags.forEach((v, i) => {
+            tag[i] = v ? 1 : 0;
+        });
+        this.config.data[id].tag = tag;
+    }
+
+    getTag() {
+        const tag: boolean[] = Array(64).fill(false);
+        if (!this.config || !this.data) return tag;
+        const id = this.data.main.floorIds[this.nowIndex];
+        if (!this.config.data[id]) return tag;
+        this.config.data[id].tag.forEach((v, i) => {
+            tag[i] = v > 0.5 ? true : false;
+        });
+        return tag;
     }
 
     getMapImage(
@@ -490,23 +509,31 @@ export class Tower extends EventEmitter<TowerEvent> {
         for (let ny = 0; ny < map.length; ny++) {
             for (let nx = 0; nx < map[0].length; nx++) {
                 const tile = map[ny][nx];
-                const value = this.getValue(tile);
                 const img = this.getMappedImage(tile, nx, ny);
                 if (!img) continue;
                 const [im, sx, sy, sw, sh] = img;
                 const dx = nx * 32 + 16 - sw / 2;
                 const dy = ny * 32 + 32 - sh;
                 ctx.drawImage(im, sx, sy, sw, sh, dx, dy, sw, sh);
+            }
+        }
+
+        // 3. 数字
+        for (let ny = 0; ny < map.length; ny++) {
+            for (let nx = 0; nx < map[0].length; nx++) {
+                const tile = map[ny][nx];
+                const value = this.getValue(tile);
                 if (value !== -1) {
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'bottom';
                     ctx.fillStyle = '#fff';
                     ctx.strokeStyle = '#000';
-                    ctx.font = '14px Arial';
+                    ctx.font = '12px "Fira Code"';
                     ctx.lineWidth = 2;
-                    const str = value.toString();
-                    ctx.strokeText(str, nx * 32 + 2, ny * 32 + 32);
-                    ctx.fillText(str, nx * 32 + 2, ny * 32 + 32);
+                    ctx.lineJoin = 'round';
+                    const str = format(value);
+                    ctx.strokeText(str, nx * 32 + 2, ny * 32 + 32, 30);
+                    ctx.fillText(str, nx * 32 + 2, ny * 32 + 32, 30);
                 }
             }
         }
@@ -529,7 +556,7 @@ export class Tower extends EventEmitter<TowerEvent> {
                 'var data_a1e2fb4a_e986_4524_b0da_9b7ba7c0874d = \n' +
                     JSON.stringify(this.data, void 0, 4)
             ),
-            configWrite.write(JSON.stringify(this.config, void 0, 4))
+            configWrite.write(JSON.stringify(this.config))
         ]);
 
         await dataWrite.close();

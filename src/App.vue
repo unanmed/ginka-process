@@ -184,9 +184,18 @@ folder.on('update', () => {
     if (folder.folder) tower.update(folder.folder);
 });
 
+tower.on('updateFloor', () => {
+    tower.getTag().forEach((v, i) => {
+        tagCond[i] = v;
+    });
+});
+
 tower.on('updateFloorIds', ids => {
     floorCount.value = ids.length;
     nowIndex.value = clamp(nowIndex.value, 0, floorCount.value - 1);
+    tower.getTag().forEach((v, i) => {
+        tagCond[i] = v;
+    });
 });
 
 tower.on('clickBlock', (x, y) => {
@@ -243,7 +252,9 @@ function openValue(type: TypeKeys) {
     });
 }
 
-function updateTag() {}
+function updateTag() {
+    tower.updateTag(tagCond);
+}
 
 const abort = new AbortController();
 
