@@ -449,7 +449,7 @@ export class Tower extends EventEmitter<TowerEvent> {
         const value = this.getValue(num);
         if (mapped) {
             const id = typeMap[mapped];
-            if (id === 'arrow') {
+            if (mapped === 'arrow') {
                 let id = '30_1';
                 if (y == 0) id = '30_1';
                 else if (x === 0) id = '30_2';
