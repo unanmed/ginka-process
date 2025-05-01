@@ -306,6 +306,19 @@ export class Tower extends EventEmitter<TowerEvent> {
         this.render();
     }
 
+    async reloadFloor() {
+        if (!this.data || !this.handle) return;
+        const id = this.data.main.floorIds[this.nowIndex];
+        if (!id) return;
+        const floors = await this.handle.getDirectoryHandle('floors');
+        const floor = await floors.getFileHandle(`${id}.js`);
+        const file = await floor.getFile();
+        const text = await file.text();
+        const json = JSON.parse(text.split('\n').slice(1).join('\n'));
+        this.floors.set(id, json.map);
+        this.render();
+    }
+
     updateFloor(index: number) {
         this.nowIndex = index;
         this.emit('updateFloor');
@@ -329,13 +342,21 @@ export class Tower extends EventEmitter<TowerEvent> {
         if (!this.config) return;
         const dict = this.config.mapping;
         const idxArrow = dict.arrow.indexOf(num);
-        dict.arrow.splice(idxArrow, 1);
+        if (idxArrow !== -1) {
+            dict.arrow.splice(idxArrow, 1);
+        }
         const idxFloor = dict.floor.indexOf(num);
-        dict.floor.splice(idxFloor, 1);
+        if (idxFloor !== -1) {
+            dict.floor.splice(idxFloor, 1);
+        }
         const idxWall = dict.wall.indexOf(num);
-        dict.wall.splice(idxWall, 1);
+        if (idxWall !== -1) {
+            dict.wall.splice(idxWall, 1);
+        }
         const idxDec = dict.decoration.indexOf(num);
-        dict.decoration.splice(idxDec, 1);
+        if (idxDec !== -1) {
+            dict.decoration.splice(idxDec, 1);
+        }
 
         delete dict.redGem[num];
         delete dict.blueGem[num];
@@ -528,7 +549,7 @@ export class Tower extends EventEmitter<TowerEvent> {
                     ctx.textBaseline = 'bottom';
                     ctx.fillStyle = '#fff';
                     ctx.strokeStyle = '#000';
-                    ctx.font = '12px "Fira Code"';
+                    ctx.font = '12px "Fira Code", 12px "Arial"';
                     ctx.lineWidth = 2;
                     ctx.lineJoin = 'round';
                     const str = format(value);

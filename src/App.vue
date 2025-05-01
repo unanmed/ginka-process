@@ -72,12 +72,15 @@
                 >
             </div>
             <div class="approve">
-                <Button type="primary" size="large" @click="approve"
-                    >赞成（A）</Button
-                >
+                <Button type="primary" size="large" @click="approve">
+                    赞成（A）
+                </Button>
+                <Button size="large" @click="reload">
+                    重载当前地图（R）
+                </Button>
                 <Button type="primary" size="large" danger @click="reject">
-                    拒绝（D）</Button
-                >
+                    拒绝（D）
+                </Button>
             </div>
         </div>
     </div>
@@ -104,15 +107,24 @@ const support = 'showDirectoryPicker' in window;
 type TypeKeys = keyof GinkaMapping | 'erase';
 
 // 标签定义：
-// 0. 蓝海, 1. 红海, 2: 室内, 3. 野外, 4. 左右对称, 5. 上下对称, 6. 伪对称, 7. 咸鱼层,
-// 8. 剧情层, 9. 水层, 10. 爽塔, 11. Boss层, 12. 纯Boss层, 13. 多房间, 14. 多走廊, 15. 道具塔
+// 0. 蓝海, 1. 红海, 2: 室内, 3. 野外, 4. 左右对称, 5. 上下对称, 6. 伪对称, 7. 多咸鱼
+// 8. 剧情层, 9. 水层, 10. 爽塔, 11. Boss层, 12. 纯Boss层, 13. 多房间, 14. 多走廊, 15. 道具风
+// 16. 区域入口, 17. 区域连接, 18. 有机关门, 19. 道具层, 20. 斜向对称, 21. 多区域, 22. 宝物层, 23. 多机关门
+// 24. 中心对称, 25. 部分对称, 26. 鱼骨, 27. 左侧装饰, 28. 右侧装饰, 29. 上侧装饰, 30. 下侧装饰, 31. 左上装饰
+// 32. 左下装饰, 31. 右上装饰, 32. 右下装饰, 33. 零散装饰, 34. 中心装饰, 35. 少咸鱼
 
 // 标量值定义：
 // 0. 整体密度，非空白图块/地图面积，空白图块还包括装饰图块
-// 1. 怪物密度，怪物数量/地图面积
-// 2. 资源密度，资源数量/地图面积
+// 1. 墙体密度，墙壁/地图面积
+// 2. 装饰密度，装饰数量/地图面积
 // 3. 门密度，门数量/地图面积
-// 4. 入口数量
+// 4. 怪物密度，怪物数量/地图面积
+// 5. 资源密度，资源数量/地图面积
+// 6. 宝石密度，宝石数量/地图面积
+// 7. 血瓶密度，血瓶数量/地图面积
+// 8. 钥匙密度，钥匙数量/地图面积
+// 9. 道具数量
+// 10. 入口数量
 
 // 图块定义：
 // 0. 空地, 1. 墙壁, 2. 装饰（用于野外装饰，视为空地）,
@@ -153,7 +165,7 @@ const tags: string[] = [
     '左右对称',
     '上下对称',
     '伪对称',
-    '咸鱼层',
+    '多咸鱼',
     '剧情层',
     '水层',
     '爽塔',
@@ -161,7 +173,29 @@ const tags: string[] = [
     '纯Boss层',
     '多房间',
     '多走廊',
-    '道具塔'
+    '道具风',
+    '区域入口',
+    '区域连接',
+    '有机关门',
+    '道具层',
+    '斜向对称',
+    '多区域',
+    '宝物层',
+    '多机关门',
+    '中心对称',
+    '部分对称',
+    '鱼骨',
+    '左侧装饰',
+    '右侧装饰',
+    '上侧装饰',
+    '下侧装饰',
+    '左上装饰',
+    '左下装饰',
+    '右上装饰',
+    '右下装饰',
+    '零散装饰',
+    '中心装饰',
+    '少咸鱼'
 ];
 
 const folder = new SingleFolderHandler();
@@ -256,6 +290,11 @@ function updateTag() {
     tower.updateTag(tagCond);
 }
 
+async function reload() {
+    await tower.reloadFloor();
+    message.success('重载成功');
+}
+
 const abort = new AbortController();
 
 document.addEventListener(
@@ -278,6 +317,8 @@ document.addEventListener(
             reject();
         } else if (e.keyCode === 83) {
             save();
+        } else if (e.keyCode === 82) {
+            reload();
         }
 
         nowIndex.value = clamp(nowIndex.value, 0, floorCount.value - 1);
@@ -399,10 +440,11 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-around;
     flex-direction: column;
+    user-select: none;
 
     .map {
         width: 100%;
-        height: 80%;
+        height: 70%;
         display: flex;
         justify-content: center;
         align-items: center;
